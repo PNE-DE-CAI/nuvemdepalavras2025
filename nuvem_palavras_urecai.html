@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0a2f6c">
+  <title>Nuvem de Palavras | AULAS ARTICULADAS PEI</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore-compat.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/wordcloud2.js/1.2.2/wordcloud2.min.js"></script>
+
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: linear-gradient(145deg, #0a2f6c 0%, #041a3a 100%);
+      min-height: 100vh;
+      padding: 20px;
+      color: #1e293b;
+    }
+    .main-container {
+      max-width: 1440px;
+      margin: 0 auto;
+      background: #0f1a24;
+      border-radius: 48px;
+      padding: 20px;
+      box-shadow: 0 30px 35px rgba(0,0,0,.5), inset 0 1px 4px rgba(255,255,200,.1);
+      border: 1px solid #d32f2f;
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(10,47,108,.85);
+      backdrop-filter: blur(4px);
+      padding: 12px 24px;
+      border-radius: 60px;
+      margin-bottom: 25px;
+      flex-wrap: wrap;
+      gap: 15px;
+    }
+    .logo-area { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .logo-area img {
+      height: 55px;
+      width: auto;
+      max-width: 220px;
+      border-radius: 12px;
+      background: #fff;
+      padding: 4px;
+      object-fit: contain;
+    }
+    .logo-text { font-size: 1rem; font-weight: 600; color: #ffec9e; line-height: 1.3; }
+    .logo-text small { display: block; font-weight: 400; font-size: .75rem; color: rgba(255,236,158,.65); }
+    .title-badge {
+      background: #d32f2f;
+      color: #fff;
+      padding: 6px 18px;
+      border-radius: 3rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      font-size: .85rem;
+    }
+    .nav-bar { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 24px; padding: 0 6px; }
+    .nav-btn {
+      background: rgba(255,255,255,.08);
+      border: 1px solid rgba(255,255,255,.15);
+      color: rgba(255,255,255,.72);
+      padding: 10px 20px;
+      border-radius: 60px;
+      font-weight: 600;
+      font-size: .85rem;
+      cursor: pointer;
+      transition: .25s ease;
+      font-family: inherit;
+    }
+    .nav-btn:hover, .nav-btn.active { background: #d32f2f; color: #fff; border-color: #d32f2f; }
+    .app { display: block; padding: 0 4px 8px; }
+    .card {
+      background: #fff;
+      border-radius: 32px;
+      padding: 1.8rem 2rem;
+      margin-bottom: 24px;
+      box-shadow: 0 8px 20px rgba(0,0,0,.2);
+      border: 1px solid #e0e4e9;
+    }
+    .card h2 { font-size: 1.6rem; font-weight: 800; color: #0a2f6c; margin-bottom: .75rem; }
+    .card p { color: #475569; line-height: 1.6; }
+    .badge {
+      display: inline-block;
+      background: #d32f2f;
+      color: #fff;
+      padding: 4px 16px;
+      border-radius: 60px;
+      font-size: .7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      margin-bottom: 12px;
+    }
+    .badge.azul { background: #0a2f6c; }
+    .badge.verde { background: #1a7a4a; }
+    .grid-2 { display: grid; grid-template-columns: repeat(auto-fit,minmax(320px,1fr)); gap: 20px; }
+    .form-group { margin-bottom: 1.2rem; }
+    .form-group label { font-weight: 600; display: block; margin-bottom: .4rem; color: #0a2f6c; }
+    textarea, input[type="text"], input[type="password"] {
+      width: 100%;
+      padding: .8rem 1rem;
+      border: 1px solid #cbd5e1;
+      border-radius: 16px;
+      font-family: inherit;
+      font-size: .95rem;
+      background: #fff;
+    }
+    textarea:focus, input:focus { outline: none; border-color: #0a2f6c; box-shadow: 0 0 0 3px rgba(10,47,108,.15); }
+    textarea { resize: vertical; min-height: 110px; }
+    .help { font-size: .78rem; color: #64748b; margin-top: 6px; }
+    .btn {
+      background: #d32f2f;
+      color: #fff;
+      border: none;
+      padding: .75rem 1.4rem;
+      border-radius: 60px;
+      cursor: pointer;
+      font-size: .9rem;
+      font-weight: 700;
+      transition: .25s ease;
+      font-family: inherit;
+      margin: 0 .35rem .5rem 0;
+    }
+    .btn:hover { background: #b71c1c; transform: translateY(-2px); box-shadow: 0 6px 16px rgba(211,47,47,.3); }
+    .btn:disabled { opacity: .55; cursor: not-allowed; transform: none; box-shadow: none; }
+    .btn-secondary { background: #0a2f6c; }
+    .btn-secondary:hover { background: #041a3a; }
+    .btn-success { background: #1a7a4a; }
+    .btn-success:hover { background: #116039; }
+    .btn-outline { background: transparent; border: 2px solid #d32f2f; color: #d32f2f; }
+    .btn-outline:hover { background: #d32f2f; color: #fff; }
+    .cloud-wrap {
+      width: 100%;
+      min-height: 540px;
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 24px;
+      overflow: hidden;
+      position: relative;
+    }
+    #cloud { width: 100%; height: 540px; display: block; }
+    .empty-state {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      color: #64748b;
+      padding: 30px;
+      pointer-events: none;
+    }
+    .stats { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; margin-top: 16px; }
+    .stat { background: #f1f5f9; border-radius: 18px; padding: 14px; text-align: center; }
+    .stat strong { display: block; color: #0a2f6c; font-size: 1.45rem; }
+    .stat span { font-size: .76rem; color: #64748b; }
+    .ranking { list-style: none; margin-top: 14px; }
+    .ranking li {
+      display: grid;
+      grid-template-columns: 34px 1fr auto;
+      gap: 10px;
+      align-items: center;
+      padding: 10px 12px;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    .rank-number { width: 28px; height: 28px; display: grid; place-items: center; background: #0a2f6c; color: #fff; border-radius: 50%; font-size: .75rem; font-weight: 700; }
+    .rank-count { background: #d32f2f; color: #fff; border-radius: 30px; padding: 3px 9px; font-size: .72rem; font-weight: 700; }
+    .notice { display: none; padding: 12px 16px; border-radius: 14px; margin: 12px 0; font-weight: 600; }
+    .notice.show { display: block; }
+    .notice.success { background: #d4edda; color: #155724; }
+    .notice.error { background: #f8d7da; color: #721c24; }
+    .notice.info { background: #dbeafe; color: #1e3a8a; }
+    .admin-box { background: #fff8e1; border-left: 4px solid #b8860b; padding: 14px; border-radius: 14px; margin-top: 14px; }
+    .connection { display: inline-flex; align-items: center; gap: 7px; font-size: .78rem; font-weight: 700; color: #64748b; }
+    .dot { width: 10px; height: 10px; border-radius: 50%; background: #f59e0b; }
+    .dot.online { background: #22c55e; }
+    .dot.offline { background: #ef4444; }
+    .page-footer { text-align: center; font-size: .75rem; color: rgba(255,236,158,.42); margin-top: 30px; padding: 12px 0 6px; border-top: 1px solid rgba(255,255,255,.05); }
+    .hidden { display: none !important; }
+
+    /* ===== MODAL DE LIMPEZA ===== */
+    .modal-limpeza { display:none; position:fixed; inset:0; background:rgba(4,26,58,.88); z-index:9999; align-items:center; justify-content:center; padding:20px; }
+    .modal-limpeza.ativo { display:flex; }
+    .modal-conteudo { background:#fff; width:100%; max-width:520px; border-radius:32px; padding:2rem; box-shadow:0 25px 60px rgba(0,0,0,.45); border:2px solid #d32f2f; }
+    .modal-conteudo h2 { color:#0a2f6c; margin-bottom:12px; }
+    .modal-conteudo p { color:#475569; line-height:1.6; margin-bottom:18px; }
+
+    @media(max-width:700px) {
+      body { padding: 10px; }
+      .main-container { border-radius: 20px; padding: 10px; }
+      .header { border-radius: 24px; padding: 10px 16px; flex-direction: column; align-items: flex-start; }
+      .logo-area img { height: 42px; }
+      .card { padding: 1.2rem; border-radius: 20px; }
+      .grid-2 { grid-template-columns: 1fr; }
+      .stats { grid-template-columns: 1fr; }
+      .cloud-wrap, #cloud { min-height: 420px; height: 420px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="main-container">
+    <header class="header">
+      <div class="logo-area">
+        <img src="https://i.ibb.co/0p01LzxB/logo3de.jpg" alt="Logo SEDUC SP">
+        <div class="logo-text">
+          Nuvem de Palavras · AULAS ARTICULADAS PEI
+          <small>Secretaria da Educação do Estado de São Paulo · URE Caieiras</small>
+        </div>
+      </div>
+      <span class="title-badge">SEDUC SP</span>
+    </header>
+
+    <nav class="nav-bar">
+      <button class="nav-btn active" onclick="irPara('participacao', this)">Participar</button>
+      <button class="nav-btn" onclick="irPara('resultado', this)">Nuvem em tempo real</button>
+      <button class="nav-btn" onclick="irPara('ranking', this)">Ranking</button>
+    </nav>
+
+    <main class="app">
+      <section class="grid-2">
+        <article class="card" id="participacao">
+          <span class="badge">Participação</span>
+          <h2>☁️ Construa a nuvem coletiva</h2>
+          <p>Digite palavras ou expressões curtas que representem o encontro. Separe cada resposta por vírgula, ponto e vírgula ou quebra de linha.</p>
+
+          <div class="form-group" style="margin-top:18px">
+            <label for="participante">Nome ou identificação (opcional)</label>
+            <input type="text" id="participante" maxlength="80" placeholder="Ex.: Professor(a), escola ou equipe">
+          </div>
+          <div class="form-group">
+            <label for="palavras">Palavras ou expressões</label>
+            <textarea id="palavras" maxlength="500" placeholder="Ex.: aprendizagem, colaboração, tecnologia"></textarea>
+            <div class="help">Máximo de 10 respostas por envio. Termos repetidos no mesmo envio serão considerados apenas uma vez.</div>
+          </div>
+
+          <button class="btn" id="btnEnviar" onclick="salvarPalavras()">Enviar respostas</button>
+          <button class="btn btn-outline" onclick="limparFormulario()">Limpar</button>
+          <div id="mensagem" class="notice" role="status" aria-live="polite"></div>
+        </article>
+
+        <aside class="card">
+          <span class="badge verde">Status</span>
+          <h2>📊 Participação ao vivo</h2>
+          <p class="connection"><span id="statusDot" class="dot"></span><span id="statusText">Configurando conexão...</span></p>
+          <div class="stats">
+            <div class="stat"><strong id="totalRespostas">0</strong><span>registros</span></div>
+            <div class="stat"><strong id="totalPalavras">0</strong><span>ocorrências</span></div>
+            <div class="stat"><strong id="totalUnicas">0</strong><span>termos únicos</span></div>
+          </div>
+        </aside>
+      </section>
+
+      <section class="card" id="resultado">
+        <span class="badge azul">Resultado em tempo real</span>
+        <h2>🌐 Nuvem de Palavras</h2>
+        <div class="cloud-wrap">
+          <canvas id="cloud"></canvas>
+          <div id="emptyState" class="empty-state">A nuvem aparecerá aqui assim que as primeiras respostas forem registradas.</div>
+        </div>
+        <div style="margin-top:16px">
+          <button class="btn btn-secondary" onclick="baixarImagem()">Baixar PNG</button>
+          <button class="btn btn-success" onclick="atualizarNuvem()">Atualizar visual</button>
+          <button class="btn btn-outline" onclick="abrirLimpeza()">Apagar respostas</button>
+        </div>
+      </section>
+
+      <section class="card" id="ranking">
+        <span class="badge">Top 20</span>
+        <h2>🏆 Palavras mais citadas</h2>
+        <ol id="listaRanking" class="ranking"><li>Nenhuma resposta registrada.</li></ol>
+      </section>
+    </main>
+
+    <footer class="page-footer">Sistema de Nuvem de Palavras · URE Caieiras · Dados armazenados no URE-CAIEIRAS NUVEM</footer>
+  </div>
+
+
+  <div id="modalLimpeza" class="modal-limpeza" role="dialog" aria-modal="true" aria-labelledby="tituloLimpeza">
+    <div class="modal-conteudo">
+      <span class="badge">Área administrativa</span>
+      <h2 id="tituloLimpeza">Apagar todas as respostas</h2>
+      <p>Esta ação apagará todas as palavras, o ranking e a nuvem atual. A operação não poderá ser desfeita.</p>
+      <div class="form-group">
+        <label for="senhaLimpeza">Digite a senha administrativa</label>
+        <input type="password" id="senhaLimpeza" placeholder="Senha" autocomplete="off">
+      </div>
+      <button class="btn" id="btnConfirmarLimpeza" onclick="apagarTodasRespostas()">Confirmar exclusão</button>
+      <button class="btn btn-secondary" onclick="fecharLimpeza()">Cancelar</button>
+      <div id="mensagemLimpeza" class="notice" role="status" aria-live="polite"></div>
+    </div>
+  </div>
+
+  <script>
+    /* ============================================================
+       CONFIGURAÇÃO DO FIREBASE
+       1. Crie um projeto em https://console.firebase.google.com
+       2. Ative Firestore Database.
+       3. Em Configurações do projeto > Seus apps, crie um app Web.
+       4. Substitua os valores abaixo pelos fornecidos pelo Firebase.
+       ============================================================ */
+// Your web app's Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyCJN14aVrfueJAxw9bCCwTfgINXzsIMOtY",
+  authDomain: "urecaieirasformacoes2026.firebaseapp.com",
+  projectId: "urecaieirasformacoes2026",
+  storageBucket: "urecaieirasformacoes2026.firebasestorage.app",
+  messagingSenderId: "890215987043",
+  appId: "1:890215987043:web:889386d4dfb35475ce0556"
+};
+
+    const COLECAO = "nuvemPalavras";
+    const cores = ["#0a2f6c", "#d32f2f", "#b8860b", "#1a7a4a", "#334155"];
+    const stopwords = new Set(["A","O","AS","OS","DE","DA","DO","DAS","DOS","E","EM","NA","NO","NAS","NOS","PARA","POR","UM","UMA","QUE","COM"]);
+
+    let db = null;
+    let unsubscribe = null;
+    let listaAtual = [];
+    let contagemAtual = {};
+    let registrosAtuais = 0;
+
+    function firebaseConfigurado() {
+      return firebaseConfig.apiKey && !firebaseConfig.apiKey.includes("COLE_AQUI") &&
+             firebaseConfig.projectId && !firebaseConfig.projectId.includes("SEU_");
+    }
+
+    function iniciarFirebase() {
+      if (!firebaseConfigurado()) {
+        alterarStatus("offline", "URE-CAIEIRAS ainda não configurado");
+        mostrarMensagem("Edite o arquivo e preencha o objeto URE CAIEIRAS Config para ativar o banco de dados.", "info");
+        return;
+      }
+      try {
+        firebase.initializeApp(firebaseConfig);
+        db = firebase.firestore();
+        escutarRespostas();
+      } catch (erro) {
+        console.error(erro);
+        alterarStatus("offline", "Falha ao iniciar o URE-CAIEIRAS");
+        mostrarMensagem("Não foi possível iniciar o URE-CAIEIRAS. Verifique as credenciais do projeto.", "error");
+      }
+    }
+
+    function normalizarTermo(texto) {
+      return texto
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-zA-Z0-9À-ÿ\s-]/g, " ")
+        .replace(/\s+/g, " ")
+        .trim()
+        .toUpperCase();
+    }
+
+    function extrairTermos(texto) {
+      const termos = texto
+        .split(/[,;\n]+/)
+        .map(normalizarTermo)
+        .filter(t => t.length >= 2 && t.length <= 50 && !stopwords.has(t));
+      return [...new Set(termos)].slice(0, 10);
+    }
+
+    async function salvarPalavras() {
+      if (!db) {
+        mostrarMensagem("Configure o URE-CAIEIRAS antes de enviar respostas.", "error");
+        return;
+      }
+      const campo = document.getElementById("palavras");
+      const participante = document.getElementById("participante").value.trim().slice(0, 80);
+      const termos = extrairTermos(campo.value);
+
+      if (!termos.length) {
+        mostrarMensagem("Digite ao menos uma palavra ou expressão válida.", "error");
+        campo.focus();
+        return;
+      }
+
+      const btn = document.getElementById("btnEnviar");
+      btn.disabled = true;
+      btn.textContent = "Enviando...";
+
+      try {
+        const batch = db.batch();
+        const envioId = gerarIdEnvio();
+        termos.forEach(termo => {
+          const ref = db.collection(COLECAO).doc();
+          batch.set(ref, {
+            palavra: termo,
+            participante: participante || "Anônimo",
+            envioId,
+            criadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+            dataLocal: new Date().toISOString(),
+            ativo: true
+          });
+        });
+        await batch.commit();
+        campo.value = "";
+        mostrarMensagem(`${termos.length} resposta(s) enviada(s) com sucesso.`, "success");
+      } catch (erro) {
+        console.error(erro);
+        mostrarMensagem("Não foi possível salvar. Verifique a conexão e as regras do Firestore.", "error");
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Enviar respostas";
+      }
+    }
+
+    function escutarRespostas() {
+      alterarStatus("online", "Conectado ao URE-CAIEIRAS");
+      unsubscribe = db.collection(COLECAO)
+        .where("ativo", "==", true)
+        .onSnapshot(snapshot => {
+          registrosAtuais = snapshot.size;
+          contagemAtual = {};
+          snapshot.forEach(doc => {
+            const termo = normalizarTermo(doc.data().palavra || "");
+            if (termo) contagemAtual[termo] = (contagemAtual[termo] || 0) + 1;
+          });
+          listaAtual = Object.entries(contagemAtual).sort((a,b) => b[1] - a[1]);
+          atualizarInterface();
+          alterarStatus("online", "Atualização em tempo real ativa");
+        }, erro => {
+          console.error(erro);
+          alterarStatus("offline", "Erro de leitura no Firestore");
+          mostrarMensagem("Erro ao ler os dados. Confira as regras do Firestore.", "error");
+        });
+    }
+
+    function atualizarInterface() {
+      const total = listaAtual.reduce((soma, item) => soma + item[1], 0);
+      document.getElementById("totalRespostas").textContent = registrosAtuais;
+      document.getElementById("totalPalavras").textContent = total;
+      document.getElementById("totalUnicas").textContent = listaAtual.length;
+      renderizarRanking();
+      atualizarNuvem();
+    }
+
+    function atualizarNuvem() {
+      const canvas = document.getElementById("cloud");
+      ajustarCanvas(canvas);
+      const contexto = canvas.getContext("2d");
+      contexto.clearRect(0, 0, canvas.width, canvas.height);
+      const vazio = document.getElementById("emptyState");
+
+      if (!listaAtual.length) {
+        vazio.classList.remove("hidden");
+        return;
+      }
+      vazio.classList.add("hidden");
+
+      const maior = Math.max(...listaAtual.map(i => i[1]));
+      const listaPonderada = listaAtual.map(([termo, quantidade]) => {
+        const peso = 16 + Math.sqrt(quantidade / maior) * 58;
+        return [termo, peso];
+      });
+
+      WordCloud(canvas, {
+        list: listaPonderada,
+        gridSize: Math.max(7, Math.round(canvas.width / 115)),
+        weightFactor: 1,
+        minSize: 12,
+        rotateRatio: .22,
+        rotationSteps: 2,
+        minRotation: -Math.PI / 8,
+        maxRotation: Math.PI / 8,
+        backgroundColor: "#ffffff",
+        fontFamily: "Inter, sans-serif",
+        fontWeight: "700",
+        color: () => cores[Math.floor(Math.random() * cores.length)],
+        drawOutOfBound: false,
+        shrinkToFit: true
+      });
+    }
+
+    function ajustarCanvas(canvas) {
+      const rect = canvas.parentElement.getBoundingClientRect();
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const altura = window.innerWidth <= 700 ? 420 : 540;
+      canvas.width = Math.max(320, Math.floor(rect.width * dpr));
+      canvas.height = Math.floor(altura * dpr);
+      canvas.style.width = `${rect.width}px`;
+      canvas.style.height = `${altura}px`;
+    }
+
+    function renderizarRanking() {
+      const ranking = document.getElementById("listaRanking");
+      if (!listaAtual.length) {
+        ranking.innerHTML = "<li>Nenhuma resposta registrada.</li>";
+        return;
+      }
+      ranking.innerHTML = listaAtual.slice(0,20).map(([termo,qtd], indice) => `
+        <li>
+          <span class="rank-number">${indice + 1}</span>
+          <strong>${escaparHTML(termo)}</strong>
+          <span class="rank-count">${qtd}</span>
+        </li>`).join("");
+    }
+
+    function baixarImagem() {
+      if (!listaAtual.length) {
+        mostrarMensagem("Ainda não há dados para exportar.", "error");
+        return;
+      }
+      const canvas = document.getElementById("cloud");
+      const link = document.createElement("a");
+      link.download = `nuvem-palavras-${new Date().toISOString().slice(0,10)}.png`;
+      link.href = canvas.toDataURL("image/png", 1);
+      link.click();
+    }
+
+    function irPara(id, botao) {
+      document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
+      botao.classList.add("active");
+      document.getElementById(id).scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+    function limparFormulario() {
+      document.getElementById("participante").value = "";
+      document.getElementById("palavras").value = "";
+      document.getElementById("mensagem").className = "notice";
+    }
+
+    function mostrarMensagem(texto, tipo) {
+      const el = document.getElementById("mensagem");
+      el.textContent = texto;
+      el.className = `notice show ${tipo}`;
+      if (tipo === "success") setTimeout(() => el.className = "notice", 4500);
+    }
+
+    function alterarStatus(tipo, texto) {
+      const dot = document.getElementById("statusDot");
+      dot.className = `dot ${tipo}`;
+      document.getElementById("statusText").textContent = texto;
+    }
+
+    function gerarIdEnvio() {
+      return `${Date.now()}-${Math.random().toString(36).slice(2,10)}`;
+    }
+
+    function escaparHTML(valor) {
+      const div = document.createElement("div");
+      div.textContent = valor;
+      return div.innerHTML;
+    }
+
+
+    // Altere esta senha antes de publicar.
+    const SENHA_ADMINISTRATIVA = "URE2026";
+    function abrirLimpeza(){
+      document.getElementById("modalLimpeza").classList.add("ativo");
+      document.getElementById("senhaLimpeza").value="";
+      document.getElementById("mensagemLimpeza").className="notice";
+      setTimeout(()=>document.getElementById("senhaLimpeza").focus(),100);
+    }
+    function fecharLimpeza(){ document.getElementById("modalLimpeza").classList.remove("ativo"); }
+    function mostrarMensagemLimpeza(texto,tipo){
+      const el=document.getElementById("mensagemLimpeza");
+      el.textContent=texto; el.className=`notice show ${tipo}`;
+    }
+    async function apagarTodasRespostas(){
+      if(document.getElementById("senhaLimpeza").value!==SENHA_ADMINISTRATIVA){ mostrarMensagemLimpeza("Senha administrativa incorreta.","error"); return; }
+      if(!db){ mostrarMensagemLimpeza("O Firebase não está conectado.","error"); return; }
+      if(!confirm("Tem certeza de que deseja apagar todas as respostas?")) return;
+      const botao=document.getElementById("btnConfirmarLimpeza"); botao.disabled=true;
+      mostrarMensagemLimpeza("Apagando as respostas...","info");
+      try{
+        const snapshot=await db.collection(COLECAO).get();
+        if(snapshot.empty){ mostrarMensagemLimpeza("Não existem respostas para apagar.","info"); return; }
+        for(let inicio=0; inicio<snapshot.docs.length; inicio+=450){
+          const lote=db.batch();
+          snapshot.docs.slice(inicio,inicio+450).forEach(documento=>lote.delete(documento.ref));
+          await lote.commit();
+        }
+        mostrarMensagemLimpeza("Todas as respostas foram apagadas. O sistema está pronto para outra aula.","success");
+        setTimeout(fecharLimpeza,2200);
+      }catch(erro){ console.error(erro); mostrarMensagemLimpeza("Não foi possível apagar. Autorize a exclusão nas regras do Firestore.","error"); }
+      finally{ botao.disabled=false; }
+    }
+
+    let resizeTimer;
+    window.addEventListener("resize", () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(atualizarNuvem, 250);
+    });
+
+    document.getElementById("palavras").addEventListener("keydown", event => {
+      if ((event.ctrlKey || event.metaKey) && event.key === "Enter") salvarPalavras();
+    });
+
+    window.addEventListener("beforeunload", () => {
+      if (unsubscribe) unsubscribe();
+    });
+
+    iniciarFirebase();
+  </script>
+
+  <!--
+    REGRAS RECOMENDADAS PARA TESTE TEMPORÁRIO NO FIRESTORE:
+
+    rules_version = '2';
+    service cloud.firestore {
+      match /databases/{database}/documents {
+        match /nuvemPalavras/{documento} {
+          allow read: if true;
+          allow create: if request.resource.data.palavra is string
+                        && request.resource.data.palavra.size() >= 2
+                        && request.resource.data.palavra.size() <= 50;
+          allow update: if false;
+          allow delete: if true;
+        }
+      }
+    }
+
+    IMPORTANTE: para uso definitivo, habilite Firebase Authentication e App Check.
+  -->
+</body>
+</html>
